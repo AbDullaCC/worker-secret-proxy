@@ -134,6 +134,10 @@ src/
 
 See [`src/schema-diagram.md`](src/schema-diagram.md) for a full Mermaid ERD.
 
+### Control-Plane Schema
+
+![Control-plane ERD](assets/schema.png)
+
 The five core entities are:
 
 | Entity                | Purpose                                                    |
