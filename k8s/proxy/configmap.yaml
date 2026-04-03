@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proxy-nginx-config
+  namespace: proxy-system
+data:
+  nginx.conf: |
+    events {}
+
+    http {
+      # Kubernetes DNS resolver (CoreDNS)
+      resolver kube-dns.kube-system.svc.cluster.local valid=5s;
+
+      server {
+        listen 80;
+
+        # Health endpoint for probes
+        location /healthz {
+          access_log off;
+          return 200 '{"status":"healthy","service":"secretproxy"}\n';
+          add_header Content-Type application/json;
+        }
+
+        # Proxy all requests to mock-provider via Kubernetes DNS
+        location / {
+          proxy_pass         http://mock-provider.proxy-system.svc.cluster.local;
+          proxy_set_header   Host              $host;
+          proxy_set_header   X-Real-IP         $remote_addr;
+          proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+          proxy_set_header   X-Forwarded-Proto $scheme;
+          proxy_connect_timeout 5s;
+          proxy_read_timeout    10s;
+        }
+      }
+    }

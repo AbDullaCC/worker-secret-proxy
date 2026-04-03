@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mock-provider-nginx-config
+  namespace: proxy-system
+data:
+  nginx.conf: |
+    events {}
+
+    http {
+      server {
+        listen 80;
+
+        # Health endpoint for probes
+        location /healthz {
+          access_log off;
+          return 200 '{"status":"healthy","service":"mock-provider"}\n';
+          add_header Content-Type application/json;
+        }
+
+        # Mock Stripe charges endpoint
+        location /stripe/charges {
+          if ($request_method != POST) {
+            return 405 '{"error":"Only POST is supported"}\n';
+          }
+          return 200 '{"id":"ch_mock_1234567890","object":"charge","amount":1000,"currency":"usd","status":"succeeded","description":"Mock charge from mock-provider pod","source":"mock-provider.proxy-system.svc.cluster.local"}\n';
+          add_header Content-Type application/json;
+        }
+
+        # Catch-all: return a generic mock response
+        location / {
+          return 200 '{"status":"ok","source":"mock-provider","message":"Request reached the mock external provider"}\n';
+          add_header Content-Type application/json;
+        }
+      }
+    }

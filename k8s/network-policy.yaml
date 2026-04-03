@@ -1,0 +1,72 @@
+# ═══════════════════════════════════════════════════════════════════════
+# NetworkPolicy for proxy-system namespace
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Three policies:
+#   1. default-deny-ingress  — blocks ALL ingress in the namespace
+#   2. allow-app-to-proxy    — sample-app → secretproxy (port 80)
+#   3. allow-proxy-to-mock   — secretproxy → mock-provider (port 80)
+#
+# Effect:
+#   ✅ sample-app → secretproxy        (allowed)
+#   ✅ secretproxy → mock-provider     (allowed)
+#   ❌ sample-app → mock-provider      (blocked by default-deny)
+#   ❌ anything else → any pod         (blocked by default-deny)
+# ═══════════════════════════════════════════════════════════════════════
+
+---
+# 1. Default deny all ingress in proxy-system
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: proxy-system
+spec:
+  podSelector: {}          # applies to ALL pods in the namespace
+  policyTypes:
+    - Ingress
+  # no ingress rules = deny all ingress
+
+---
+# 2. Allow sample-app → secretproxy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-proxy
+  namespace: proxy-system
+spec:
+  podSelector:
+    matchLabels:
+      app: secretproxy     # policy applies to proxy pods
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: sample-app   # only sample-app can reach the proxy
+      ports:
+        - protocol: TCP
+          port: 80
+
+---
+# 3. Allow secretproxy → mock-provider
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-proxy-to-mock
+  namespace: proxy-system
+spec:
+  podSelector:
+    matchLabels:
+      app: mock-provider    # policy applies to mock-provider pods
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: secretproxy  # only the proxy can reach mock-provider
+      ports:
+        - protocol: TCP
+          port: 80

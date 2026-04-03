@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secretproxy
+  namespace: proxy-system
+  labels:
+    app: secretproxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secretproxy
+  template:
+    metadata:
+      labels:
+        app: secretproxy
+    spec:
+      containers:
+        - name: secretproxy
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+          # ── Readiness probe ──────────────────────────────
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # ── Liveness probe ───────────────────────────────
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: proxy-nginx-config
